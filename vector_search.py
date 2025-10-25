@@ -36,7 +36,7 @@ def _load_vectors(vectors_path: str = 'doc_vectors.json') -> Dict[str, Dict]:
     if _cache['vectors'] is None:
         with open(vectors_path, encoding='utf-8') as f:
             _cache['vectors'] = json.load(f)
-        # build inverted
+        # 构建倒排
         inv = defaultdict(list)
         for doc_id, info in _cache['vectors'].items():
             vec = info.get('vector', {})
@@ -55,7 +55,7 @@ def search(query: str, vectors_path: str = 'doc_vectors.json', top_k: int = 10) 
     inv = _cache['inv']
     N = _cache['N']
 
-    # tokenize query consistent with document processing
+    #对查询进行分词，并与文档处理保持一致
     tokenized = tokenize_and_normalize({'q': query})
     tokens = tokenized.get('q', [])
     if not tokens:
@@ -63,29 +63,29 @@ def search(query: str, vectors_path: str = 'doc_vectors.json', top_k: int = 10) 
 
     q_tf = Counter(tokens)
 
-    # compute idf for query terms by using df from inverted index lengths
+    # 计算每个查询词的idf
     idf = {}
     for term in q_tf.keys():
         df = len(inv.get(term, []))
-        # same smoothing as doc_vectors: idf = log((N+1)/(df+1)) + 1
+        #和文档一样进行平滑处理: idf = log((N+1)/(df+1)) + 1
         idf[term] = math.log((N + 1) / (df + 1)) + 1.0
 
-    # build query vector (tf * idf)
+    # 构建 query vector (tf * idf)
     q_vec = {term: (tf * idf.get(term, 0.0)) for term, tf in q_tf.items()}
-    # normalize query vector L2
+    # L2 归一化
     norm = math.sqrt(sum(v * v for v in q_vec.values()))
     if norm > 0:
         for term in list(q_vec.keys()):
             q_vec[term] = q_vec[term] / norm
 
-    # accumulate scores using inverted lists
+    #计算相似度分数
     scores = defaultdict(float)
     for term, q_w in q_vec.items():
         postings = inv.get(term, [])
         for doc_id, doc_w in postings:
             scores[doc_id] += q_w * doc_w
 
-    # get top_k docs
+    # 得到最匹配的K个结果
     if not scores:
         return []
 
@@ -95,7 +95,6 @@ def search(query: str, vectors_path: str = 'doc_vectors.json', top_k: int = 10) 
 
 
 if __name__ == '__main__':
-    # simple interactive test
     q = input('query> ')
     res = search(q)
     for fn, sc in res:

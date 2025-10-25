@@ -147,6 +147,6 @@ def load_raw_lexicon_and_postings(index_raw_path: str):
     # 预期的数据格式是: { term: {"postings": [...], "skips": [...]}, ... }
     postings_map = data
     term_list = list(postings_map.keys())
-    # map term to itself so that postings_for_term() can use str(tid) == term to lookup
+    # 这里每个词项映射到自己,这样在 postings_for_term() 中可以直接用 str(tid) == term 查找
     term_to_id = {t: t for t in term_list}
     return term_list, term_to_id, postings_map

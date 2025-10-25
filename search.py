@@ -35,7 +35,7 @@ from typing import List, Tuple, Union, Optional, Dict, Any
 from index_loader import load_lexicon_and_postings, decode_doc_ids, postings_for_term
 
 
-AST = Union[Tuple[str, object], List]  # 简单的类型注解：AST 是嵌套的元组
+AST = Union[Tuple[str, object], List]  # AST 是嵌套的元组
 
 
 def tokenize_boolean(query: str) -> List[str]:
@@ -338,7 +338,7 @@ def intersect_with_skips(A: List[int], A_skips: List[int], B: List[int], B_skips
 		elif a < b:
 			next_i = A_skips[i] if i < len(A_skips) else -1
 			if next_i != -1 and A[next_i] <= b:
-				# jump forward while beneficial
+				# 多次跳转直到不能保证跳过不会超过匹配项
 				while next_i != -1 and A[next_i] <= b:
 					i = next_i
 					next_i = A_skips[i] if i < len(A_skips) else -1
@@ -466,9 +466,9 @@ def _decode_postings_with_positions(entry: Dict[str, Any]) -> Tuple[List[Tuple[i
 	- 第一个元素：[(doc_id, positions), ...] 列表
 	- 第二个元素：跳表指针列表
 	"""
-	# Support two entry formats:
-	# 1) compressed format produced by compress_index: contains 'doc_gaps' and 'pos_gaps'
-	# 2) raw format produced by build_inverted_index: contains 'postings' list with dicts { 'doc_id': id, 'positions': [...] }
+	# 支持两种格式：:
+	# 1) 压缩格式compress_index: contains 'doc_gaps' and 'pos_gaps'
+	# 2) 未压缩格式build_inverted_index: contains 'postings' list with dicts { 'doc_id': id, 'positions': [...] }
 	if 'postings' in entry:
 		postings_list = entry.get('postings', [])
 		postings: List[Tuple[int, List[int]]] = []
@@ -479,7 +479,7 @@ def _decode_postings_with_positions(entry: Dict[str, Any]) -> Tuple[List[Tuple[i
 		skips = entry.get('skips', [])
 		return postings, skips
 
-	# fallback: compressed format
+	# 没有posting键，默认处理: compressed format
 	ids = decode_doc_ids(entry)
 	pos_gaps_all = entry.get('pos_gaps', [])
 	postings: List[Tuple[int, List[int]]] = []
@@ -554,7 +554,7 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 			else:
 				term_list, term_to_id, postings_map = load_lexicon_and_postings(index_path)
 	except Exception:
-		# detection is best-effort; ignore errors and continue with initial load
+		# detection 已经是最大努力; 不管error继续使用initial load
 		pass
 	doc_id_map = load_doc_id_map(doc_id_map_path)
 
@@ -593,11 +593,11 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 			terms = node[1]
 			if len(terms) == 0:
 				return [], None
-			# for single-term phrase, just return term postings (with skips)
+			# 对单个词, just return term postings (with skips)
 			if len(terms) == 1:
 				ids, skips = postings_for_term(terms[0], term_to_id, postings_map, postings_cache)
 				return ids, skips
-			# multi-term phrase: need positions
+			# 多词短语则需要它们的位置
 			# decode full postings with positions for each term
 			term_postings_maps: List[Dict[int, List[int]]] = []
 			term_doc_lists: List[List[int]] = []
@@ -605,7 +605,7 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 			for t in terms:
 				tid = term_to_id.get(t)
 				key = str(tid) if tid is not None else None
-				# try to use postings_for_term to get doc ids and skips
+				# 尝试用 postings_for_term to get doc ids and skips
 				if key is not None:
 					ids, skips = postings_for_term(t, term_to_id, postings_map, postings_cache)
 				else:
@@ -625,8 +625,8 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 					postings_pos_cache[key] = (postings_with_pos, [])
 				term_postings_maps.append(_postings_list_to_map(postings_pos_cache[key][0]))
 
-			# intersect doc id lists (use skip-aware if both have skips)
-			# start from first list
+			# 嵌入 doc id lists (use skip-aware if both have skips)
+			# 从第一个list开始
 			candidate = term_doc_lists[0]
 			for i in range(1, len(term_doc_lists)):
 				B = term_doc_lists[i]
@@ -637,11 +637,10 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 				else:
 					candidate = intersect_sorted_lists(candidate, B)
 
-			# verify positional adjacency for each candidate doc
+			#为每个文档验证位置相邻性
 			matched: List[int] = []
 			for doc in candidate:
 				positions0 = term_postings_maps[0].get(doc, [])
-				# build sets for faster membership
 				pos_sets = [set(term_postings_maps[i].get(doc, [])) for i in range(1, len(terms))]
 				found = False
 				for p in positions0:
@@ -677,14 +676,12 @@ def evaluate_ast(ast: AST, index_path: str, doc_id_map_path: str, use_raw: bool 
 			res = union_sorted_lists(L, R)
 			return res, None
 
-		# fallback: if node is ('PHRASE', ...) handled above; if node is plain phrase as list
 		if isinstance(node, tuple) and len(node) == 2 and node[0] == 'PHRASE':
 			return [], None
 
 		raise ValueError('Unknown AST node in evaluator: %r' % (node,))
 
 	ids, _ = eval_node(ast)
-	# map to filenames
 	res = [doc_id_map[str(i)] for i in sorted(ids)]
 	return res
 
