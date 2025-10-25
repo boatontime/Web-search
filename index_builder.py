@@ -4,7 +4,7 @@ import json
 
 
 def build_and_save_index(folder_path, index_path_raw, index_path, doc_map_path, skip_interval):
-    """Build inverted index from folder_path and save compressed index and doc map to files."""
+    """从指定文件夹构建倒排索引，并将压缩后的索引和文档映射保存到文件"""
     result = build_inverted_index(folder_path, skip_interval)
     inverted_index = result.get('inverted_index') if isinstance(result, dict) else result
     doc_id_map = result.get('doc_id_map') if isinstance(result, dict) else None

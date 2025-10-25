@@ -47,7 +47,7 @@ def build_doc_vectors(folder_path: str, output_path: str = 'doc_vectors.json') -
     file_names = [f for f in sorted(os.listdir(folder_path)) if f.endswith('.xml')]
     N = len(file_names)
 
-    # mapping doc_id (int starting at 1) -> filename
+    #创建文档ID到文件名的映射字典
     doc_id_map: Dict[int, str] = {i: fn for i, fn in enumerate(file_names, start=1)}
 
     # 2) 为每个文档构建 token 列表并统计 tf；同时统计 df
@@ -64,7 +64,7 @@ def build_doc_vectors(folder_path: str, output_path: str = 'doc_vectors.json') -
             print(f"Failed to parse/tokenize {file_name}: {e}")
             tokenized = {}
 
-        # combine tokens from all string fields except 'type'
+        #合并'type'字段以外的所有分词结果
         tokens: List[str] = []
         for k, v in tokenized.items():
             if k == 'type' or not isinstance(v, list):
@@ -73,17 +73,17 @@ def build_doc_vectors(folder_path: str, output_path: str = 'doc_vectors.json') -
 
         docs_terms[doc_id] = tokens
 
-        # update document frequency: count unique terms per doc
+        #更新文档频率：统计每个词在多少个文档中出现
         unique_terms = set(tokens)
         for t in unique_terms:
             term_df[t] += 1
 
-    # 3) compute idf for each term (smoothed)
+    # 3) 计算每个词的逆文档频率值(idf),df+1，值+1.0平滑处理
     idf: Dict[str, float] = {}
     for t, df in term_df.items():
         idf[t] = math.log((N + 1) / (df + 1)) + 1.0
 
-    # 4) compute tf-idf vectors and normalize (L2)
+    # 4) 计算TF-IDF向量并进行L2归一化处理
     doc_vectors: Dict[str, Dict] = {}
     for doc_id, tokens in docs_terms.items():
         tf_counts = Counter(tokens)
@@ -91,15 +91,15 @@ def build_doc_vectors(folder_path: str, output_path: str = 'doc_vectors.json') -
         for term, tf in tf_counts.items():
             w = tf * idf.get(term, 0.0)
             vec[term] = w
-        # L2 normalization
+        # 计算向量的L2范数
         norm = math.sqrt(sum(v * v for v in vec.values()))
         if norm > 0:
             for term in list(vec.keys()):
                 vec[term] = vec[term] / norm
-        # store using string doc_id for JSON keys
+        # 存储结果
         doc_vectors[str(doc_id)] = {'file': doc_id_map[doc_id], 'vector': vec}
 
-    # 5) save to JSON (note: large file possible)
+    # 5) 保存到JSON文件 
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(doc_vectors, f, ensure_ascii=False, indent=2)
@@ -111,6 +111,5 @@ def build_doc_vectors(folder_path: str, output_path: str = 'doc_vectors.json') -
 
 
 if __name__ == '__main__':
-    # simple CLI: build vectors from DATA folder next to this file
     folder = os.path.join(os.path.dirname(__file__), 'test_datas')
     build_doc_vectors(folder)

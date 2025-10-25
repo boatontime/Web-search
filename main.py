@@ -1,8 +1,6 @@
 import sys
 from typing import Optional
 
-# keep imports lazy to avoid heavy deps during menu navigation
-
 INDEX_RAW = "inverted_index_raw.json"
 INDEX_COMPRESSED = "inverted_index.json"
 DOC_MAP = "doc_id_map.json"

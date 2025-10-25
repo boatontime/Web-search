@@ -16,7 +16,7 @@ def build_inverted_index(folder_path, skip_interval):
     返回:
         inverted_index: dict, 词 -> 文档列表（文档用文件名表示）
     """
-    # inverted_index will map token -> { doc_id: [positions...] }
+    # inverted_index倒排表，记录每个词出现的文档及位置
     inverted_index = {}
     doc_id_map = {}
     _file_to_id = {}
@@ -43,7 +43,7 @@ def build_inverted_index(folder_path, skip_interval):
 
             # 3. 更新倒排表（记录每个词在文档中的位置）
             file_id = _file_to_id[file_name]
-            # position counter across all text fields in this document
+            # 遍历当前文档所有分词结果
             pos = 0
             for key, tokens in tokens_dict.items():
                 if key == 'type' or not isinstance(tokens, list):

@@ -1,7 +1,6 @@
 def delta_encode(nums):
-    """Delta/gap encode a non-empty sorted list of integers.
-
-    Returns list where first element is original first value, subsequent are gaps.
+    """
+    对非空的已排序整数列表进行差值编码。返回的列表中，第一个元素是原始的第一个值，后续元素是差值。
     """
     if not nums:
         return []
@@ -12,12 +11,10 @@ def delta_encode(nums):
 
 
 def front_code_terms(term_list, block_size=4):
-    """Front-code sorted term_list into blocks.
-
-    Returns a list of blocks. Each block is a dict:
+    """
+    Front-code 将 term_list 排序为块。而返回块的列表。每个块是一个字典：
       { 'first': first_term, 'suffixes': [ {'lcp': int, 'suffix': str}, ... ] }
-
-    term_id is the index of the term in term_list (0-based).
+    term_id 是 term_list 中term的索引（从 0 开始）
     """
     blocks = []
     n = len(term_list)
@@ -26,7 +23,7 @@ def front_code_terms(term_list, block_size=4):
         first = block_terms[0]
         suffixes = []
         for t in block_terms[1:]:
-            # compute longest common prefix length between first and t
+            #计算第一个和第t个词的最长公共前缀长度
             lcp = 0
             maxl = min(len(first), len(t))
             while lcp < maxl and first[lcp] == t[lcp]:

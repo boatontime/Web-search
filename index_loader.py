@@ -71,8 +71,8 @@ def postings_for_term(term, term_to_id, postings_map, cache) -> Tuple[List[int],
     按需解码 postings_map 中给定 term 的压缩条目并返回 (doc_ids_list, skips_list)，
     同时把解码结果写入 cache（key 为 str(term_id)）。
     """
-    # term_to_id may map term -> numeric id (for compressed index)
-    # or term -> term (string) for raw index; accept either.
+    # term_to_id 可能将 term 映射到数字ID（压缩索引）
+    # 或直接映射到词项字符串（原始索引）；两种方式都支持
     tid = term_to_id.get(term)
     if tid is None:
         return [], []
@@ -82,24 +82,23 @@ def postings_for_term(term, term_to_id, postings_map, cache) -> Tuple[List[int],
         return cache[key]
     entry = postings_map.get(key)
     if not entry:
-        # For compressed index, postings_map keys are numeric-string ids.
-        # For raw index, postings_map keys are the term itself (we set term_to_id to map term->term),
-        # so if not found return empty.
+        # 压缩索引的情况：postings_map 的键是数字字符串形式的ID
+        # 原始索引的情况：postings_map 的键是词项本身，term_to_id 映射也是这样
         cache[key] = ([], [])
         return [], []
 
-    # Detect entry format: compressed entries use 'doc_gaps'; raw entries use 'postings' list
+    # 通过检查是否存在 doc_gaps 字段来判断是否为压缩格式; 原始格式存储完整的 postings 列表
     if 'doc_gaps' in entry:
-        # compressed format: decode gaps
+        # 压缩格式使用差分编码存储文档ID;
         ids = decode_doc_ids(entry)
         skips = entry.get('skips', [])
         cache[key] = (ids, skips)
         return ids, skips
     else:
-        # raw format: entry expected to be {"postings": [{"doc_id": id, "positions": [...]}, ...], "skips": [...]}
+        # 处理原始格式的倒排索引条目
         postings = entry.get('postings', [])
         ids = [p.get('doc_id') for p in postings]
-        # ensure sorted ascending
+        # 确保升序排序
         ids = sorted(ids)
         skips = entry.get('skips', []) if isinstance(entry.get('skips', []), list) else []
         cache[key] = (ids, skips)
@@ -108,26 +107,26 @@ def postings_for_term(term, term_to_id, postings_map, cache) -> Tuple[List[int],
 
 def load_raw_lexicon_and_postings(index_raw_path: str):
     """
-    Detect index format helper: returns 'raw' or 'compressed' by inspecting file content.
+    
+    检查索引格式,compressed或者raw
+
     """
 
 
 def detect_index_format(index_path: str) -> str:
     """
-    Inspect the JSON at index_path and return 'compressed' or 'raw'.
+    检查 JSON 文件格式并返回 'compressed' 或 'raw'
     """
     with open(index_path, encoding='utf-8') as f:
         data = json.load(f)
-    # compressed format typically contains top-level keys 'lexicon_blocks' and 'postings'
     if isinstance(data, dict) and ('lexicon_blocks' in data or 'postings' in data):
         return 'compressed'
-    # raw format is expected to be a dict mapping term -> { 'postings': [...], 'skips': [...] }
     if isinstance(data, dict):
-        # check first value for structure
+        # 检查值确认结构
         for v in data.values():
             if isinstance(v, dict) and 'postings' in v:
                 return 'raw'
-        # default fallback
+        # 默认处理为raw
         return 'raw'
 
 def load_raw_lexicon_and_postings(index_raw_path: str):
@@ -144,8 +143,8 @@ def load_raw_lexicon_and_postings(index_raw_path: str):
     with open(index_raw_path, encoding='utf-8') as f:
         data = json.load(f)
 
-    # build term list from keys of the inverted index
-    # data is expected to be { term: {"postings": [...], "skips": [...]}, ... }
+    # 从倒排表构建索引列表
+    # 预期的数据格式是: { term: {"postings": [...], "skips": [...]}, ... }
     postings_map = data
     term_list = list(postings_map.keys())
     # map term to itself so that postings_for_term() can use str(tid) == term to lookup
